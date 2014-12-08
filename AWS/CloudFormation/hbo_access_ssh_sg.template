@@ -1,0 +1,25 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "This template creates a security group that allows SSH access from New York and Seattle offices.",
+    "Mappings" : {
+        "RegionMap" : {
+            "us-east-1" : { "VPCID" : "vpc-0870fe6d" },
+            "us-west-2" : { "VPCID" : "vpc-6c26f009" }
+        }
+    },
+    "Resources" : {
+        "InstanceSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "Enable SSH access from New York and Seattle HBO offices.",
+                "VpcId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "VPCID"]},
+                "SecurityGroupIngress" : [ {
+                    "IpProtocol" : "tcp",
+                    "FromPort" : "22",
+                    "ToPort" : "22",
+                    "CidrIp" : "206.208.180.240/32"
+                }]
+            }
+        }
+    }
+}

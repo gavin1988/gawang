@@ -1,0 +1,205 @@
+{
+    "AWSTemplateFormatVersion":"2010-09-09",
+    "Description":"GOCS Cassandra CF template.",
+    "Parameters":{
+        "HostedZone":{
+            "Type":"String",
+            "Description":"Name of the hosted zone",
+            "Default":"tve.hbogo.com"
+        },
+        "Environment":{
+            "Type":"String",
+            "Description":"Environment where the resources will be deployed",
+            "AllowedValues":["qa", "prod"]
+            }
+    },
+    "Mappings":{
+        "RegionMap":{
+            "us-west-2":{
+                "AMI":"ami-3fffb40f",
+                "VPCID":"vpc-6c26f009"
+            }
+        },
+        "Environment":{
+            "qa":{
+                "SN2A": "subnet-a3d974c6",
+                "SN2B": "subnet-1c985b6b",
+                "SN2C": "subnet-4c05e515",
+                "env": "qa"
+            },
+            "prod":{
+                "SN2A": "subnet-bdde73d8",
+                "SN2B": "subnet-39985b4e",
+                "SN2C": "subnet-a804e4f1",
+                "env": "prod"
+            }
+        }
+    },
+    "Resources":{
+        "Ec2Instance2a":{
+            "Type":"AWS::EC2::Instance",
+            "Properties":{
+                "InstanceType":"m3.xlarge",
+                "SubnetId": { "Fn::FindInMap":[ "Environment", { "Ref":"Environment" }, "SN2A" ] },
+                "SecurityGroupIds": [ { "Ref" : "SourceSG" }, "sg-a1d7b8c4" ],
+                "KeyName":"hbogotve",
+                "ImageId":{
+                    "Fn::FindInMap":[
+                        "RegionMap",
+                        {
+                            "Ref":"AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "IamInstanceProfile":{
+                    "Ref":"IAMInstanceProfile"
+                },
+                "Tags":[
+                    {
+                        "Key":"Name",
+                        "Value": { "Fn::Join" : [ " ", [ { "Ref":"Environment" }, "GOCS Cassandra" ] ] }
+                    },
+                    {
+                        "Key":"environment",
+                        "Value": { "Ref":"Environment" }
+                    },
+                    {
+                        "Key":"application",
+                        "Value":"gocs-cassandra"
+                    }
+                ]
+            }
+        },
+        "Ec2Instance2b":{
+            "Type":"AWS::EC2::Instance",
+            "Properties":{
+                "InstanceType":"m3.xlarge",
+                "SubnetId": { "Fn::FindInMap":[ "Environment", { "Ref":"Environment" }, "SN2B" ] },
+                "SecurityGroupIds": [ { "Ref" : "SourceSG" }, "sg-a1d7b8c4" ],
+                "KeyName":"hbogotve",
+                "ImageId":{
+                    "Fn::FindInMap":[
+                        "RegionMap",
+                        {
+                            "Ref":"AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "IamInstanceProfile":{
+                    "Ref":"IAMInstanceProfile"
+                },
+                "Tags":[
+                    {
+                        "Key":"Name",
+                        "Value": { "Fn::Join" : [ " ", [ { "Ref":"Environment" }, "GOCS Cassandra" ] ] }
+                    },
+                    {
+                        "Key":"environment",
+                        "Value": { "Ref":"Environment" }
+                    },
+                    {
+                        "Key":"application",
+                        "Value":"gocs-cassandra"
+                    }
+                ]
+            }
+        },
+        "Ec2Instance2c":{
+            "Type":"AWS::EC2::Instance",
+            "Properties":{
+                "InstanceType":"m3.xlarge",
+                "SubnetId": { "Fn::FindInMap":[ "Environment", { "Ref":"Environment" }, "SN2C" ] },
+                "SecurityGroupIds": [ { "Ref" : "SourceSG" }, "sg-a1d7b8c4" ],
+                "KeyName":"hbogotve",
+                "ImageId":{
+                    "Fn::FindInMap":[
+                        "RegionMap",
+                        {
+                            "Ref":"AWS::Region"
+                        },
+                        "AMI"
+                    ]
+                },
+                "IamInstanceProfile":{
+                    "Ref":"IAMInstanceProfile"
+                },
+                "Tags":[
+                    {
+                        "Key":"Name",
+                        "Value": { "Fn::Join" : [ " ", [ { "Ref":"Environment" }, "GOCS Cassandra" ] ] }
+                    },
+                    {
+                        "Key":"environment",
+                        "Value": { "Ref":"Environment" }
+                    },
+                    {
+                        "Key":"application",
+                        "Value":"gocs-cassandra"
+                    }
+                ]
+            }
+        },
+        "IAMRole":{
+            "Type":"AWS::IAM::Role",
+            "Properties":{
+                "AssumeRolePolicyDocument":{
+                    "Version":"2012-10-17",
+                    "Statement":[
+                        {
+                            "Effect":"Allow",
+                            "Principal":{
+                                "Service":[
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                            "Action":[
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path":"/"
+            }
+        },
+        "IAMInstanceProfile":{
+            "Type":"AWS::IAM::InstanceProfile",
+            "Properties":{
+                "Path":"/",
+                "Roles":[
+                    {
+                        "Ref":"IAMRole"
+                    }
+                ]
+            }
+        },
+        "SourceSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId" : { "Fn::FindInMap":[ "RegionMap", { "Ref":"AWS::Region" }, "VPCID" ]},
+                "GroupDescription": "Sample source security group"
+            }
+        },
+        "InboundRule": {
+            "Type": "AWS::EC2::SecurityGroupIngress",
+            "Properties":{
+                "IpProtocol": "tcp",
+                "FromPort": "0",
+                "ToPort": "65535",
+                "SourceSecurityGroupId": {
+                    "Fn::GetAtt": [
+                      "SourceSG",
+                      "GroupId"
+                    ]
+                },
+                "GroupId": {
+                    "Fn::GetAtt": [
+                        "SourceSG",
+                        "GroupId"
+                    ]
+                }
+            }
+        }
+    }
+}

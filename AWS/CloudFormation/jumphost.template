@@ -1,0 +1,101 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "Jump Host CF template.",
+    "Parameters" : {
+        "HostedZone" : {
+            "Type" : "String",
+            "Description" : "Name of the hosted zone",
+            "Default" : "tve.hbogo.com"
+        }
+    },
+    "Mappings" : {
+        "RegionMap" : {
+            "us-east-1" : { "AMI" : "ami-246ed34c", "SNID" : "subnet-3f05cc66", "SGID" : "sg-b72137d2", "VPCID" : "vpc-0870fe6d" },
+            "us-west-2" : { "AMI" : "ami-55a7ea65", "SNID" : "subnet-bfde73da", "SGID" : "sg-a1d7b8c4", "VPCID" : "vpc-6c26f009" }
+        }
+    },
+    "Resources" : {
+        "Ec2Instance" : {
+            "Type" : "AWS::EC2::Instance",
+            "Properties" : {
+                "InstanceType" : "m3.medium",
+                "SubnetId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "SNID" ]},
+                "SecurityGroupIds" : [ { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "SGID" ] }, { "Ref" : "InstanceSecurityGroup" } ],
+                "KeyName" : "hbogotve",
+                "ImageId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+                "IamInstanceProfile" : { "Ref" : "JumpHostIAMInstanceProfile" },
+                "Tags" : [
+                    {
+                        "Key" : "Name",
+                        "Value" : "Jump Host"
+                    },
+                    {
+                        "Key" : "environment",
+                        "Value" : "production"
+                    },
+                    {
+                        "Key" : "application",
+                        "Value" : "jumphost"
+                    }
+                ]
+            }
+        },
+        "InstanceSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "Jump Host security group",
+                "VpcId" : { "Fn::FindInMap" : [ "RegionMap", { "Ref" : "AWS::Region" }, "VPCID" ]}
+            }
+        },
+        "JumpHostIAMRole" : {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement": [ {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [ "ec2.amazonaws.com" ]
+                        },
+                        "Action": [ "sts:AssumeRole" ]
+                    } ]
+                },
+                "Path": "/"
+            }
+        },
+        "JumpHostIAMInstanceProfile" : {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [ { "Ref": "JumpHostIAMRole" } ]
+            }
+        },
+        "myDNSRecord" : {
+            "Type" : "AWS::Route53::RecordSet",
+            "Properties" : {
+                "HostedZoneName" : {
+                    "Fn::Join" : [ "", [
+                        { "Ref" : "HostedZone"}, "."
+                    ] ]
+                },
+                "Name" : {
+                    "Fn::Join" : [ "", [
+                        "jump", ".", {"Ref" : "AWS::Region"}, ".", { "Ref" : "HostedZone" }, "."
+                        ]
+                    ]
+                },
+                "Type" : "CNAME",
+                "TTL" : "900",
+                "ResourceRecords" : [ { "Fn::GetAtt" : [ "Ec2Instance", "PublicDnsName" ] } ]
+            },
+            "DependsOn" :  "myEIP"
+        },
+        "myEIP" : {
+            "Type" : "AWS::EC2::EIP",
+            "Properties" : {
+                "InstanceId" : { "Ref" : "Ec2Instance" },
+                "Domain" : "vpc"
+            }
+        }
+    }
+}
